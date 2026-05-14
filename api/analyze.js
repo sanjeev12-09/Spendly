@@ -9,46 +9,43 @@ module.exports = async function handler(req, res) {
   try {
     const { total, catStr, txList, month } = req.body;
 
-    const prompt = `You are a friendly, sharp personal finance advisor. Be conversational, warm, and insightful. Use Indian Rupee context. Short readable paragraphs only. No markdown, no bullet points. Speak directly to the user.
-
-Analyze my ${month} spending:
-Total: Rs.${total}
-By Category: ${catStr}
-Transactions:
-${txList}
-
-Give: 1) Quick overall summary, 2) What stands out good or bad, 3) Two specific actionable money-saving tips. Under 200 words.`;
-
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return res.status(500).json({ text: 'Gemini API key not configured. Please add GEMINI_API_KEY in Vercel environment variables.' });
+      return res.status(500).json({ text: 'GROQ_API_KEY not configured in Vercel environment variables.' });
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 400, temperature: 0.7 }
-        })
-      }
-    );
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama3-8b-8192',
+        max_tokens: 400,
+        temperature: 0.7,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a friendly, sharp personal finance advisor. Be conversational, warm, and insightful. Use Indian Rupee context. Short readable paragraphs only. No markdown, no bullet points. Speak directly to the user.'
+          },
+          {
+            role: 'user',
+            content: `Analyze my ${month} spending:\nTotal: Rs.${total}\nBy Category: ${catStr}\nTransactions:\n${txList}\n\nGive: 1) Quick overall summary, 2) What stands out good or bad, 3) Two specific actionable money-saving tips. Under 200 words.`
+          }
+        ]
+      })
+    });
 
     const data = await response.json();
-    console.log('Gemini response:', JSON.stringify(data));
 
     if (!response.ok) {
-      return res.status(500).json({ text: `Gemini error: ${data.error?.message || 'Unknown error'}` });
+      return res.status(500).json({ text: `Groq error: ${data.error?.message || JSON.stringify(data)}` });
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) {
-      return res.status(500).json({ text: `Gemini returned no text. Raw: ${JSON.stringify(data)}` });
-    }
-
+    const text = data.choices?.[0]?.message?.content?.trim() || 'Analysis failed.';
     res.status(200).json({ text });
+
   } catch (err) {
     console.error('Handler error:', err);
     res.status(500).json({ text: `Error: ${err.message}` });
