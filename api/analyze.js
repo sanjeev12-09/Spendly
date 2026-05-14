@@ -19,8 +19,13 @@ ${txList}
 
 Give: 1) Quick overall summary, 2) What stands out good or bad, 3) Two specific actionable money-saving tips. Under 200 words.`;
 
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ text: 'Gemini API key not configured. Please add GEMINI_API_KEY in Vercel environment variables.' });
+    }
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -32,10 +37,20 @@ Give: 1) Quick overall summary, 2) What stands out good or bad, 3) Two specific 
     );
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Analysis failed.';
+    console.log('Gemini response:', JSON.stringify(data));
+
+    if (!response.ok) {
+      return res.status(500).json({ text: `Gemini error: ${data.error?.message || 'Unknown error'}` });
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) {
+      return res.status(500).json({ text: `Gemini returned no text. Raw: ${JSON.stringify(data)}` });
+    }
+
     res.status(200).json({ text });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Analysis failed. Please try again.' });
+    console.error('Handler error:', err);
+    res.status(500).json({ text: `Error: ${err.message}` });
   }
 };
