@@ -1,4 +1,4 @@
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const prompt = `You are a friendly, sharp personal finance advisor. Be conversational, warm, and insightful. Use Indian Rupee context. Short readable paragraphs only. No markdown, no bullet points. Speak directly to the user.
 
 Analyze my ${month} spending:
-Total: ₹${total}
+Total: Rs.${total}
 By Category: ${catStr}
 Transactions:
 ${txList}
@@ -38,4 +38,4 @@ Give: 1) Quick overall summary, 2) What stands out good or bad, 3) Two specific 
     console.error(err);
     res.status(500).json({ error: 'Analysis failed. Please try again.' });
   }
-}
+};
